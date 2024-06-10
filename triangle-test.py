@@ -3,6 +3,11 @@ from toqito.nonlocal_games.nonlocal_game import NonlocalGame
 
 
 class PlanarGame(NonlocalGame):
+    """
+    Parameters:
+    * S : The edge set of the graph for the game, as tuples of vertices
+    * (n, m) : The size of the lattice that the graph embeds into for the game
+    """
 
     def __init__(self, S, n, m):
         # Alice's input set
@@ -19,7 +24,7 @@ class PlanarGame(NonlocalGame):
         prob_mat = np.ones(shape=(len(self.S), len(self.T))) / (
             len(self.S) * len(self.T)
         )
-        pred_mat = self.game_values()
+        pred_mat = self.value_matrix()
         super().__init__(prob_mat, pred_mat)
 
     """
@@ -101,6 +106,15 @@ class PlanarGame(NonlocalGame):
             ):
                 return True
 
+        """
+        Parameters:
+        * p1, p2, p3: Three points
+        Returns: 
+        * 0 if p1, p2, and p3 are collinear
+        * 1 if p1, p2, p3 are oriented clockwise 
+        * 2 if p1, p2, p3 are oriented counterclockwise
+        """
+
         def orientation(p1, p2, p3):
             o = (p2[1] - p1[1]) * (p3[0] - p2[0]) - (p2[0] - p1[0]) * (p3[1] - p2[1])
             if o == 0:
@@ -130,7 +144,12 @@ class PlanarGame(NonlocalGame):
             return True
         return False
 
-    def game_values(self):
+    """
+    Returns: 
+    * The matrix V corresponding to the value function for the (G, n, m)-planarity game, where V[i, j, k, l] is 1 if (A[i], B[j]) is a winning answer to the inputs (S[k], T[l]), and 0 otherwise
+    """
+
+    def value_matrix(self):
         V_mat = np.ones(shape=(len(self.A), len(self.B), len(self.S), len(self.T)))
         for a in range(len(self.A)):
             for b in range(len(self.B)):
@@ -142,7 +161,7 @@ class PlanarGame(NonlocalGame):
                         line_b = self.B[b]
 
                         # Winning condition 1
-                        # Check if Alice and Bob's answers are the same for the same inputs
+                        # Alice and Bob must return the same point exactly on the same vertices
                         if not self.consistent(edge_a, edge_b, line_a, line_b):
                             V_mat[a, b, s, t] = 0
 
@@ -154,16 +173,17 @@ class PlanarGame(NonlocalGame):
                             and edge_a[1] != edge_b[0]
                             and edge_a[1] != edge_b[1]
                         ):
-                            if self.cross(edge_a, edge_b, line_a, line_b):
+                            if self.cross(line_a, line_b):
                                 V_mat[a, b, s, t] = 0
         return V_mat
 
 
-# S = [(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)]
-S = [(1, 2), (1, 3), (2, 3)]
-n = 1
+S = [(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)]  # K4
+# S = [(1, 2), (1, 3), (2, 3)] # K3
+n = 2
 m = 2
 
 # prob_mat = np.ones(shape=(len(S), len(T))) / (len(S) * len(T))
 planar_game = PlanarGame(S=S, n=n, m=m)
+print(f"{planar_game.nonsignaling_value()=}")
 print(f"{planar_game.classical_value()=}")
