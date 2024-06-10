@@ -9,8 +9,15 @@ prob_mat = np.array([[1 / 4, 1 / 4], [1 / 4, 1 / 4]])
 dim_in_alice, dim_out_alice = 2, 2
 dim_in_bob, dim_out_bob = 2, 2
 
+
+def V(a, b, s, t):
+    return np.where(a ^ b == s * t, 1, 0)
+
+
+V_mat = np.fromfunction(V, shape=(2, 2, 2, 2), dtype=int)
+print(V_mat)
 def chsh_pred_mat():
-    pred_mat = np.zeros((dim_in_alice, dim_out_alice, dim_in_bob, dim_out_bob))
+    pred_mat = np.zeros((dim_out_alice, dim_out_bob, dim_in_alice, dim_in_bob))
     for a_alice in range(dim_out_alice):
         for b_bob in range(dim_out_bob):
             for x_alice in range(dim_in_alice):
