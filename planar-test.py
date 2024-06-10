@@ -178,12 +178,29 @@ class PlanarGame(NonlocalGame):
         return V_mat
 
 
-S = [(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)]  # K4
-# S = [(1, 2), (1, 3), (2, 3)] # K3
-n = 2
+# Example where the nonsignaling = quantum = classical value and they are all < 1
+S = [(1, 2), (1, 3), (2, 3)]  # K3
+n = 1
 m = 2
-
-# prob_mat = np.ones(shape=(len(S), len(T))) / (len(S) * len(T))
 planar_game = PlanarGame(S=S, n=n, m=m)
 print(f"{planar_game.nonsignaling_value()=}")
+print(f"{planar_game.quantum_value_lower_bound()=}")
+print(f"{planar_game.classical_value()=}")
+
+# Example where the nonsignaling and classical values (and therefore the quantum value) is 1
+S = [(1, 2), (1, 3), (2, 3)]  # K3
+n = 2
+m = 2
+planar_game = PlanarGame(S=S, n=n, m=m)
+print(f"{planar_game.nonsignaling_value()=}")
+print(f"{planar_game.quantum_value_lower_bound()=}")
+print(f"{planar_game.classical_value()=}")
+
+# Example where the nonsignaling value is 1, but the classical value is <1
+S = [(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)]  # K4
+n = 2
+m = 2
+planar_game = PlanarGame(S=S, n=n, m=m)
+print(f"{planar_game.nonsignaling_value()=}")
+print(f"{planar_game.quantum_value_lower_bound()=}")
 print(f"{planar_game.classical_value()=}")
