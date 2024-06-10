@@ -30,6 +30,7 @@ class PlanarGame(NonlocalGame):
     Returns: 
     * A list containing all line segments, as tuples of tuples of coordinates of their endpoints
     """
+
     def line_segments(self, n, m):
         LX, LY = np.meshgrid(np.arange(self.n), np.arange(self.m))
         L = np.vstack((LX.flatten(), LY.flatten())).T
@@ -43,27 +44,54 @@ class PlanarGame(NonlocalGame):
         return A
 
     """
-    Helper function checking if the answers are consistent with the inputs
+    Helper function that checks if Alice's and Bob's answers are consistent with the edges they are provided
     
-    Parameters
+    Parameters:
+    * edge_a : A tuple of vertices provided to Alice
+    * edge_b : A tuple of vertices provided to Bob
+    * line_a : The line segment Alice returns, as a tuple of points
+    * line_b : The line segment Bob returns, as a tuple of points
+
     Returns:
-    * False if 
+    * False if Alice and Bob return different coordinates on the same vertex, or the same coordinates on different vertices
     * True otherwise 
     """
+
     def consistent(self, edge_a, edge_b, line_a, line_b):
         for i in range(2):
             for j in range(2):
-                # Alice and Bob map the same vertices to the same point
+                # Alice and Bob must map the same vertices to the same point
                 if edge_a[i] == edge_b[j] and np.any(line_a[i] != line_b[j]):
                     return False
-                # Injectivity
+                # Alice and Bob must map different vertices to different points
                 elif edge_a[i] != edge_b[j] and np.all(line_a[i] == line_b[j]):
                     return False
         return True
 
-    # https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
-    def cross(self, edge_a, edge_b, line_a, line_b):
-        # Checks if p2 lies on line segment from p1 to p3
+    """
+    Helper function that checks if two line segments intersect
+    https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
+    
+    Parameters:
+    * line_a : The first line segment, as a tuple of points
+    * line_b : The second line segment, as a tuple of points
+
+    Returns:
+    * True if the line segments intersect, including the case where an endpoint of one line segment lies on the other line segment
+    * False otherwise
+    """
+
+    def cross(self, line_a, line_b):
+        """
+        Helper function checking whether p2 lies on the line segment from p1 to p3
+
+        Parameters:
+        * p1, p2, p3: Three collinear points
+
+        Returns:
+        * True if p2 lies on line segment from p1 to p3
+        """
+
         def on_segment(p1, p2, p3):
             if (
                 p2[0] <= max(p1[0], p3[0])
@@ -82,32 +110,25 @@ class PlanarGame(NonlocalGame):
             if o < 0:
                 return 2
 
-        if (
-            edge_a[0] != edge_b[0]
-            and edge_a[0] != edge_b[1]
-            and edge_a[1] != edge_b[0]
-            and edge_a[1] != edge_b[1]
-        ):
-            o1 = orientation(line_a[0], line_a[1], line_b[0])
-            o2 = orientation(line_a[0], line_a[1], line_b[1])
-            o3 = orientation(line_b[0], line_b[1], line_a[0])
-            o4 = orientation(line_b[0], line_b[1], line_a[1])
-            # General case
-            if o1 != o2 and o3 != o4:
-                return True
+        o1 = orientation(line_a[0], line_a[1], line_b[0])
+        o2 = orientation(line_a[0], line_a[1], line_b[1])
+        o3 = orientation(line_b[0], line_b[1], line_a[0])
+        o4 = orientation(line_b[0], line_b[1], line_a[1])
 
-            # Collinear cases
-            if o1 == 0 and on_segment(line_a[0], line_b[0], line_a[1]):
-                return True
-            if o2 == 0 and on_segment(line_a[0], line_b[1], line_a[1]):
-                return True
-            if o3 == 0 and on_segment(line_b[0], line_a[0], line_b[1]):
-                return True
-            if o4 == 0 and on_segment(line_b[0], line_a[1], line_b[1]):
-                return True
-            return False
-        else:
-            return False
+        # General case
+        if o1 != o2 and o3 != o4:
+            return True
+
+        # Collinear cases
+        if o1 == 0 and on_segment(line_a[0], line_b[0], line_a[1]):
+            return True
+        if o2 == 0 and on_segment(line_a[0], line_b[1], line_a[1]):
+            return True
+        if o3 == 0 and on_segment(line_b[0], line_a[0], line_b[1]):
+            return True
+        if o4 == 0 and on_segment(line_b[0], line_a[1], line_b[1]):
+            return True
+        return False
 
     def game_values(self):
         V_mat = np.ones(shape=(len(self.A), len(self.B), len(self.S), len(self.T)))
@@ -127,8 +148,14 @@ class PlanarGame(NonlocalGame):
 
                         # Winning condition 2
                         # If all vertices are distinct, the line segments cannot cross
-                        if self.cross(edge_a, edge_b, line_a, line_b):
-                            V_mat[a, b, s, t] = 0
+                        if (
+                            edge_a[0] != edge_b[0]
+                            and edge_a[0] != edge_b[1]
+                            and edge_a[1] != edge_b[0]
+                            and edge_a[1] != edge_b[1]
+                        ):
+                            if self.cross(edge_a, edge_b, line_a, line_b):
+                                V_mat[a, b, s, t] = 0
         return V_mat
 
 
