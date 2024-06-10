@@ -9,7 +9,6 @@ prob_mat = np.array([[1 / 4, 1 / 4], [1 / 4, 1 / 4]])
 dim_in_alice, dim_out_alice = 2, 2
 dim_in_bob, dim_out_bob = 2, 2
 
-
 def chsh_pred_mat():
     pred_mat = np.zeros((dim_in_alice, dim_out_alice, dim_in_bob, dim_out_bob))
     for a_alice in range(dim_out_alice):

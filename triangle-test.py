@@ -19,4 +19,4 @@ for i in range(L.shape[0]):
             A.append([p1, p2])
 A = np.array(A)
 B = A
-print(A)
+
