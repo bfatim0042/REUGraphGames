@@ -5,8 +5,8 @@ S = [(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)]
 T = S
 
 # Create lattice containing all pairs of coordinates
-k = 2
-l = 2
+k = 3
+l = 3
 
 LX, LY = np.meshgrid(np.arange(k), np.arange(l))
 L = np.vstack((LX.flatten(), LY.flatten())).T
@@ -20,7 +20,6 @@ for i in range(L.shape[0]):
             A.append([p1, p2])
 B = A
 
-
 def consistent(edge_a, edge_b, line_a, line_b):
     for i in range(2):
         for j in range(2):
@@ -30,7 +29,7 @@ def consistent(edge_a, edge_b, line_a, line_b):
             # Injectivity
             elif edge_a[i] != edge_b[j] and np.all(line_a[i] == line_b[j]):
                 return False
-            return True
+    return True
 
 
 # https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
@@ -98,7 +97,7 @@ for a in range(len(A)):
                     V_mat[a, b, s, t] = 0
 
                 # Winning condition 2
-                # # If all vertices are distinct, the line segments cannot cross
+                # If all vertices are distinct, the line segments cannot cross
                 if cross(edge_a, edge_b, line_a, line_b):
                     V_mat[a, b, s, t] = 0
 
@@ -107,5 +106,5 @@ print(V_mat)
 from toqito.nonlocal_games.nonlocal_game import NonlocalGame
 
 prob_mat = np.ones(shape=(len(S), len(T))) / (len(S) * len(T))
-triangle = NonlocalGame(prob_mat, V_mat)
-print(f"{triangle.classical_value()=}")
+planar = NonlocalGame(prob_mat, V_mat)
+print(f"{planar.classical_value()=}")
