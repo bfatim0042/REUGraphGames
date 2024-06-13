@@ -43,9 +43,9 @@ class PlanarGame(NonlocalGame):
         for i in range(L.shape[0]):
             for j in range(L.shape[0]):
                 if i != j:
-                    p1 = L[i]
-                    p2 = L[j]
-                    A.append([p1, p2])
+                    p_1 = L[i]
+                    p_2 = L[j]
+                    A.append([p_1, p_2])
         return A
 
     """
@@ -62,7 +62,8 @@ class PlanarGame(NonlocalGame):
     * True otherwise 
     """
 
-    def consistent(self, edge_a, edge_b, line_a, line_b):
+    @staticmethod
+    def consistent(edge_a, edge_b, line_a, line_b):
         for i in range(2):
             for j in range(2):
                 # Alice and Bob must map the same vertices to the same point
@@ -72,6 +73,50 @@ class PlanarGame(NonlocalGame):
                 elif edge_a[i] != edge_b[j] and np.all(line_a[i] == line_b[j]):
                     return False
         return True
+
+    """
+    Parameters:
+    * p_1, p_2, p_3: Three points
+    Returns: 
+    * 0 if p_1, p_2, and p_3 are collinear
+    * 1 if p_1, p_2, p_3 are oriented clockwise 
+    * 2 if p_1, p_2, p_3 are oriented counterclockwise
+    """
+
+    @staticmethod
+    def orientation(p_1, p_2, p_3):
+        o = (p_2[1] - p_1[1]) * (p_3[0] - p_2[0]) - (p_2[0] - p_1[0]) * (
+            p_3[1] - p_2[1]
+        )
+        if o == 0:  # o is an int so it will be exactly 0
+            return 0
+        if o > 0:
+            return 1
+        if o < 0:
+            return 2
+
+    """
+    Helper function checking whether p_2 lies on the line segment from p_1 to p_3
+
+    Parameters:
+    * p_1, p_2, p_3: Three collinear points
+
+    Returns:
+    * True if p_2 lies on the interior of line segment from p_1 to p_3
+    """
+
+    @staticmethod
+    def on_segment(p_1, p_2, p_3):
+        # If p_2 is on the line segment from p_1 to p_3:
+        if (
+            p_2[0] <= max(p_1[0], p_3[0])
+            and p_2[0] >= min(p_1[0], p_3[0])
+            and p_2[1] <= max(p_1[1], p_3[1])
+            and p_2[1] >= min(p_1[1], p_3[1])
+        ):
+            return True
+        else:
+            return False
 
     """
     Helper function that checks if two line segments intersect
@@ -86,63 +131,59 @@ class PlanarGame(NonlocalGame):
     * False otherwise
     """
 
-    def cross(self, line_a, line_b):
-        """
-        Helper function checking whether p2 lies on the line segment from p1 to p3
+    @staticmethod
+    def cross(line_a, line_b):
+        p_0 = tuple(line_a[0])
+        p_1 = tuple(line_a[1])
+        q_0 = tuple(line_b[0])
+        q_1 = tuple(line_b[1])
+        o_1 = PlanarGame.orientation(p_0, p_1, q_0)
+        o_2 = PlanarGame.orientation(p_0, p_1, q_1)
+        o_3 = PlanarGame.orientation(q_0, q_1, p_0)
+        o_4 = PlanarGame.orientation(q_0, q_1, p_1)
 
-        Parameters:
-        * p1, p2, p3: Three collinear points
-
-        Returns:
-        * True if p2 lies on line segment from p1 to p3
-        """
-
-        def on_segment(p1, p2, p3):
-            if (
-                p2[0] <= max(p1[0], p3[0])
-                and p2[0] >= min(p1[0], p3[0])
-                and p2[1] <= max(p1[1], p3[1])
-                and p2[1] >= min(p1[1], p3[1])
-            ):
+        # If all four vertices are distinct, check if they cross anywhere
+        if len({p_0, p_1, q_0, q_1}) == 4:
+            # General case
+            if o_1 != o_2 and o_3 != o_4:
                 return True
 
-        """
-        Parameters:
-        * p1, p2, p3: Three points
-        Returns: 
-        * 0 if p1, p2, and p3 are collinear
-        * 1 if p1, p2, p3 are oriented clockwise 
-        * 2 if p1, p2, p3 are oriented counterclockwise
-        """
+            # Collinear cases
+            if o_1 == 0 and PlanarGame.on_segment(p_0, q_0, p_1):
+                return True
+            if o_2 == 0 and PlanarGame.on_segment(p_0, q_1, p_1):
+                return True
+            if o_3 == 0 and PlanarGame.on_segment(q_0, p_0, q_1):
+                return True
+            if o_4 == 0 and PlanarGame.on_segment(q_0, p_1, q_1):
+                return True
+            return False
 
-        def orientation(p1, p2, p3):
-            o = (p2[1] - p1[1]) * (p3[0] - p2[0]) - (p2[0] - p1[0]) * (p3[1] - p2[1])
+        # If the two edges share exactly one vertex, check if they cross away from the shared vertex
+        if len({p_0, p_1, q_0, q_1}) == 3:
+            # find the shared vertex
+            line_a_set = {p_0, p_1}
+            line_b_set = {q_0, q_1}
+            (p_shared,) = line_a_set & line_b_set
+
+            # find the two distinct vertices
+            line_a_set.remove(p_shared)
+            line_b_set.remove(p_shared)
+            (p_0,) = line_a_set
+            (p_1,) = line_b_set
+
+            o = PlanarGame.orientation(p_0, p_shared, p_1)
             if o == 0:
-                return 0
-            if o > 0:
-                return 1
-            if o < 0:
-                return 2
+                if PlanarGame.on_segment(p_0, p_shared, p_1):
+                    return False
+                else:
+                    return False
+            else:  # o == 1 or o == 2
+                return False
 
-        o1 = orientation(line_a[0], line_a[1], line_b[0])
-        o2 = orientation(line_a[0], line_a[1], line_b[1])
-        o3 = orientation(line_b[0], line_b[1], line_a[0])
-        o4 = orientation(line_b[0], line_b[1], line_a[1])
-
-        # General case
-        if o1 != o2 and o3 != o4:
-            return True
-
-        # Collinear cases
-        if o1 == 0 and on_segment(line_a[0], line_b[0], line_a[1]):
-            return True
-        if o2 == 0 and on_segment(line_a[0], line_b[1], line_a[1]):
-            return True
-        if o3 == 0 and on_segment(line_b[0], line_a[0], line_b[1]):
-            return True
-        if o4 == 0 and on_segment(line_b[0], line_a[1], line_b[1]):
-            return True
-        return False
+        # If the two edges are the same edge, do not consider them to cross
+        else:
+            return False
 
     """
     Returns: 
@@ -150,7 +191,9 @@ class PlanarGame(NonlocalGame):
     """
 
     def value_matrix(self):
-        V_mat = np.ones(shape=(len(self.A), len(self.B), len(self.S), len(self.T)))
+        V_mat = np.ones(
+            shape=(len(self.A), len(self.B), len(self.S), len(self.T)), dtype=int
+        )
         for a in range(len(self.A)):
             for b in range(len(self.B)):
                 for s in range(len(self.S)):
@@ -160,46 +203,44 @@ class PlanarGame(NonlocalGame):
                         line_a = self.A[a]
                         line_b = self.B[b]
 
-                        # Winning condition 1
+                        # Consistency
                         # Alice and Bob must return the same point exactly on the same vertices
-                        if not self.consistent(edge_a, edge_b, line_a, line_b):
+                        if not PlanarGame.consistent(edge_a, edge_b, line_a, line_b):
                             V_mat[a, b, s, t] = 0
 
-                        # Winning condition 2
-                        # If all vertices are distinct, the line segments cannot cross
-                        if (
-                            edge_a[0] != edge_b[0]
-                            and edge_a[0] != edge_b[1]
-                            and edge_a[1] != edge_b[0]
-                            and edge_a[1] != edge_b[1]
-                        ):
-                            if self.cross(line_a, line_b):
+                        # Planarity
+                        else:
+                            if PlanarGame.cross(line_a, line_b):
                                 V_mat[a, b, s, t] = 0
+                            print(f"{line_a=}, {line_b=}, {edge_a=}, {edge_b=}")
+                            print(f"{PlanarGame.cross(line_a, line_b)=}")
+                            print(f"{V_mat[a, b, s, t]=}")
         return V_mat
 
 
-small_S = []
+# small_S = []
 # small_S.append([(1, 2)])
 # small_S.append([(1, 2), (1, 3), (2, 3)])
 # small_S.append([(1, 2), (2, 3)])
-small_S.append([(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)])
-for S in small_S:
-    for n in range(1, 4):
-        for m in range(n, 4):
-            if not ((n == 1) and (m == 1)):
-                print(f"{S=}, {m=}, {n=}")
-                planar_game = PlanarGame(S=S, n=n, m=m)
-                print(f"{planar_game.nonsignaling_value()=}")
-                print(f"{planar_game.quantum_value_lower_bound()=}")
-                print(f"{planar_game.classical_value()=}")
-# # Example where the nonsignaling = quantum = classical value and they are all < 1
-# S = [(1, 2), (1, 3), (2, 3)]  # K3
-# n = 1
-# m = 2
-# planar_game = PlanarGame(S=S, n=n, m=m)
+# small_S.append([(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)])
+# for S in small_S:
+#     for n in range(1, 4):
+#         for m in range(n, 4):
+#             if not ((n == 1) and (m == 1)):
+#                 print(f"{S=}, {m=}, {n=}")
+#                 planar_game = PlanarGame(S=S, n=n, m=m)
+#                 print(f"{planar_game.nonsignaling_value()=}")
+#                 print(f"{planar_game.quantum_value_lower_bound()=}")
+#                 print(f"{planar_game.classical_value()=}")
+
+# Example where the nonsignaling = quantum = classical value and they are all < 1
+S = [(1, 2), (2, 3)]  # K3
+n = 1
+m = 3
+planar_game = PlanarGame(S=S, n=n, m=m)
 # print(f"{planar_game.nonsignaling_value()=}")
 # print(f"{planar_game.quantum_value_lower_bound()=}")
-# print(f"{planar_game.classical_value()=}")
+print(f"{planar_game.classical_value()=}")
 
 # # Example where the nonsignaling and classical values (and therefore the quantum value) is 1
 # S = [(1, 2), (1, 3), (2, 3)]  # K3
