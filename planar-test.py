@@ -46,9 +46,6 @@ class PlanarGame(NonlocalGame):
                     p_1 = L[i]
                     p_2 = L[j]
                     A.append([p_1, p_2])
-                    p_1 = L[i]
-                    p_2 = L[j]
-                    A.append([p_1, p_2])
         return A
 
     """
@@ -64,6 +61,7 @@ class PlanarGame(NonlocalGame):
     * False if Alice and Bob return different coordinates on the same vertex, or the same coordinates on different vertices
     * True otherwise 
     """
+
     @staticmethod
     def consistent(edge_a, edge_b, line_a, line_b):
         for i in range(2):
@@ -75,50 +73,6 @@ class PlanarGame(NonlocalGame):
                 elif edge_a[i] != edge_b[j] and np.all(line_a[i] == line_b[j]):
                     return False
         return True
-
-    """
-    Parameters:
-    * p_1, p_2, p_3: Three points
-    Returns: 
-    * 0 if p_1, p_2, and p_3 are collinear
-    * 1 if p_1, p_2, p_3 are oriented clockwise 
-    * 2 if p_1, p_2, p_3 are oriented counterclockwise
-    """
-
-    @staticmethod
-    def orientation(p_1, p_2, p_3):
-        o = (p_2[1] - p_1[1]) * (p_3[0] - p_2[0]) - (p_2[0] - p_1[0]) * (
-            p_3[1] - p_2[1]
-        )
-        if o == 0:  # o is an int so it will be exactly 0
-            return 0
-        if o > 0:
-            return 1
-        if o < 0:
-            return 2
-
-    """
-    Helper function checking whether p_2 lies on the line segment from p_1 to p_3
-
-    Parameters:
-    * p_1, p_2, p_3: Three collinear points
-
-    Returns:
-    * True if p_2 lies on the interior of line segment from p_1 to p_3
-    """
-
-    @staticmethod
-    def on_segment(p_1, p_2, p_3):
-        # If p_2 is on the line segment from p_1 to p_3:
-        if (
-            p_2[0] <= max(p_1[0], p_3[0])
-            and p_2[0] >= min(p_1[0], p_3[0])
-            and p_2[1] <= max(p_1[1], p_3[1])
-            and p_2[1] >= min(p_1[1], p_3[1])
-        ):
-            return True
-        else:
-            return False
 
     """
     Helper function that checks if two line segments intersect
@@ -144,6 +98,7 @@ class PlanarGame(NonlocalGame):
         Returns:
         * True if p_2 lies on line segment from p_1 to p_3
         """
+
         def on_segment(p_1, p_2, p_3):
             if (
                 p_2[0] <= max(p_1[0], p_3[0])
@@ -163,7 +118,9 @@ class PlanarGame(NonlocalGame):
         """
 
         def orientation(p_1, p_2, p_3):
-            o = (p_2[1] - p_1[1]) * (p_3[0] - p_2[0]) - (p_2[0] - p_1[0]) * (p_3[1] - p_2[1])
+            o = (p_2[1] - p_1[1]) * (p_3[0] - p_2[0]) - (p_2[0] - p_1[0]) * (
+                p_3[1] - p_2[1]
+            )
             if o == 0:
                 return 0
             if o > 0:
@@ -230,9 +187,7 @@ class PlanarGame(NonlocalGame):
     """
 
     def value_matrix(self):
-        V_mat = np.ones(
-            shape=(len(self.A), len(self.B), len(self.S), len(self.T)), dtype=int
-        )
+        V_mat = np.ones(shape=(len(self.A), len(self.B), len(self.S), len(self.T)))
         for a in range(len(self.A)):
             for b in range(len(self.B)):
                 for s in range(len(self.S)):
@@ -242,9 +197,8 @@ class PlanarGame(NonlocalGame):
                         line_a = self.A[a]
                         line_b = self.B[b]
 
-                        # Consistency
+                        # Winning condition 1
                         # Alice and Bob must return the same point exactly on the same vertices
-                        if not PlanarGame.consistent(edge_a, edge_b, line_a, line_b):
                         if not PlanarGame.consistent(edge_a, edge_b, line_a, line_b):
                             V_mat[a, b, s, t] = 0
 
@@ -275,7 +229,6 @@ m = 3
 planar_game = PlanarGame(S=S, n=n, m=m)
 # print(f"{planar_game.nonsignaling_value()=}")
 # print(f"{planar_game.quantum_value_lower_bound()=}")
-print(f"{planar_game.classical_value()=}")
 print(f"{planar_game.classical_value()=}")
 
 # # Example where the nonsignaling and classical values (and therefore the quantum value) is 1
