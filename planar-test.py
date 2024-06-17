@@ -227,22 +227,31 @@ for S in small_S:
         # print(f"{planar_game.quantum_value_lower_bound()=}")
 
         quantum_lower_bound = planar_game.quantum_value_lower_bound()
-        print(f"Quantum value lower bound: {quantum_lower_bound['quantum_lower_bound']}")
+        print(
+            f"Quantum value lower bound: {quantum_lower_bound['quantum_lower_bound']}"
+        )
         for s_idx, s in enumerate(S):
             print(f"{s}:")
             print("Alice's POVMs:")
             for a_idx, a in enumerate(planar_game.A):
-                print(f"{np.array(a).tolist()}:\n{np.array(quantum_lower_bound['alice_strategy'][s_idx, a_idx].value).round(3)}")
+                print(
+                    f"{np.array(a).tolist()}:\n{np.array(quantum_lower_bound['alice_strategy'][s_idx, a_idx].value).round(3)}"
+                )
             print("Bob's POVMs:")
             for a_idx, a in enumerate(planar_game.A):
-                print(f"{np.array(a).tolist()}:\n{np.array(quantum_lower_bound['bob_strategy'][s_idx, a_idx].value).round(3)}")
+                print(
+                    f"{np.array(a).tolist()}:\n{np.array(quantum_lower_bound['bob_strategy'][s_idx, a_idx].value).round(3)}"
+                )
 
         classical_value = planar_game.classical_value()
         print(f"Classical value: {classical_value['classical_value']}")
         print("Alice's classical strategy:")
         for idx, s in enumerate(S):
-            print(f"{s}: {np.array(planar_game.A[int(classical_value["alice_strategy"][idx])]).tolist()}")
+            print(
+                f"{s}: {np.array(planar_game.A[int(classical_value['alice_strategy'][idx])]).tolist()}"
+            )
         print("Bob's classical strategy:")
         for idx, s in enumerate(S):
-            print(f"{s}: {np.array(planar_game.B[int(classical_value["bob_strategy"][idx])]).tolist()}")
-       
+            print(
+                f"{s}: {np.array(planar_game.B[int(classical_value['bob_strategy'][idx])]).tolist()}"
+            )
