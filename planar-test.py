@@ -9,7 +9,7 @@ class PlanarGame(NonlocalGame):
     * (n, m) : The size of the lattice that the graph embeds into for the game
     """
 
-    def __init__(self, S, n, m):
+    def __init__(self, S: list, n: int, m: int):
         # Alice's input set
         self.S = S
         # Bob's input set
@@ -63,7 +63,7 @@ class PlanarGame(NonlocalGame):
     """
 
     @staticmethod
-    def consistent(edge_a, edge_b, line_a, line_b):
+    def consistent(edge_a: tuple, edge_b: tuple, line_a: tuple, line_b: tuple):
         for i in range(2):
             for j in range(2):
                 # Alice and Bob must map the same vertices to the same point
@@ -88,7 +88,7 @@ class PlanarGame(NonlocalGame):
     """
 
     @staticmethod
-    def cross(line_a, line_b):
+    def cross(line_a: tuple, line_b: tuple):
         """
         Helper function checking whether p_2 lies on the line segment from p_1 to p_3
 
@@ -210,13 +210,39 @@ class PlanarGame(NonlocalGame):
 
 small_S = []
 # small_S.append([(1, 2)])
-small_S.append([(1, 2), (1, 3), (2, 3)])
-# small_S.append([(1, 2), (2, 3)])
+# small_S.append([(1, 2)])
+small_S.append([(1, 2), (2, 3), (1, 3)])
 # small_S.append([(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)])
+# small_S.append(
+#     [(1, 2), (2, 3), (3, 4), (4, 5), (5, 1), (1, 3), (1, 4), (3, 5), (1, 4), (1, 5)]
+# )
+# small_S.append(
+#     [(1, 6), (1, 4), (1, 2), (2, 5), (2, 3), (3, 4), (3, 6), (4, 5), (5, 6)],
+# )
 for S in small_S:
-    for m, n in [(3, 1)]:
+    for m, n in [(1, 3)]:  # , (1, 3), (1, 4), (2, 2)]:
         print(f"{S=}, {m=}, {n=}")
         planar_game = PlanarGame(S=S, n=n, m=m)
-        print(f"{planar_game.nonsignaling_value()=}")
-        print(f"{planar_game.quantum_value_lower_bound()=}")
-        print(f"{planar_game.classical_value()=}")
+        # print(f"{planar_game.nonsignaling_value()=}")
+        # print(f"{planar_game.quantum_value_lower_bound()=}")
+
+        quantum_lower_bound = planar_game.quantum_value_lower_bound()
+        print(f"Quantum value lower bound: {quantum_lower_bound['quantum_lower_bound']}")
+        for s_idx, s in enumerate(S):
+            print(f"{s}:")
+            print("Alice's POVMs:")
+            for a_idx, a in enumerate(planar_game.A):
+                print(f"{np.array(a).tolist()}:\n{np.array(quantum_lower_bound['alice_strategy'][s_idx, a_idx].value).round(3)}")
+            print("Bob's POVMs:")
+            for a_idx, a in enumerate(planar_game.A):
+                print(f"{np.array(a).tolist()}:\n{np.array(quantum_lower_bound['bob_strategy'][s_idx, a_idx].value).round(3)}")
+
+        classical_value = planar_game.classical_value()
+        print(f"Classical value: {classical_value['classical_value']}")
+        print("Alice's classical strategy:")
+        for idx, s in enumerate(S):
+            print(f"{s}: {np.array(planar_game.A[int(classical_value["alice_strategy"][idx])]).tolist()}")
+        print("Bob's classical strategy:")
+        for idx, s in enumerate(S):
+            print(f"{s}: {np.array(planar_game.B[int(classical_value["bob_strategy"][idx])]).tolist()}")
+       
