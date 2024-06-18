@@ -230,34 +230,20 @@ def small_embedding_values():
         for m, n in [(1, 3)]:  # , (1, 3), (1, 4), (2, 2)]:
             print(f"{S=}, {m=}, {n=}")
             planar_game = PlanarGame(S=S, n=n, m=m)
-            print(f"{planar_game.nonsignaling_value()=}")
-            # print(f"{planar_game.quantum_value_lower_bound()=}")
-
+            if ns:
+                print(f"{planar_game.nonsignaling_value()=}")
             if quantum:
                 display_quantum()
             if classical:
-                display_classical(
-                    planar_game.classical_value(),
-                    planar_game.A,
-                    planar_game.B,
-                    planar_game.S,
-                    planar_game.T,
-                    strategy=True,
-                )
+                display_classical()
 
 
 """
 Print the classical value of the planar game
 
 Parameters:
-* classical_value (dict) = {
-    'classical_value' : the classical value of the planar embedding game
-    'alice_strategy' : Alice's optimal classical strategy
-    'bob_strategy' : Bob's optimal classical strategy
-}
-* A, B (list) : Alice's and Bob's input sets, which are identical for the planar embedding game
-* S, T (list) : Alice's and Bob's output sets, which are identical for the planar embedding game
-* print_strategy (bool) : indicates whether to print out Alice's and Bob's classical strategies 
+* planar_game (PlanarGame) : Planar game to calculate classical value for
+* print_strategy (bool) : indicates whether to print out Alice's and Bob's classical strategies, as lists where the ith value indicates their strategy on the ith input
 """
 
 
@@ -315,12 +301,14 @@ def cluster():
     parser.add_argument("edges", help="Description of graph in terms of edge set")
     args = parser.parse_args()
     planar_game = PlanarGame(S=eval(args.edges), n=args.n, m=args.m)
+    print(f"{planar_game.S=}, {planar_game.m=}, {planar_game.n=}")
+    print(f"{planar_game.nonsignaling_value()=}")
+    display_quantum(
+        planar_game,
+        print_strategy=False,
+    )
     display_classical(
-        planar_game.classical_value(),
-        planar_game.A,
-        planar_game.B,
-        planar_game.S,
-        planar_game.T,
+        planar_game,
         print_strategy=True,
     )
 
