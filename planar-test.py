@@ -1,5 +1,6 @@
 import numpy as np
 from toqito.nonlocal_games.nonlocal_game import NonlocalGame
+import argparse
 
 
 class PlanarGame(NonlocalGame):
@@ -208,29 +209,88 @@ class PlanarGame(NonlocalGame):
         return V_mat
 
 
-small_S = []
-# small_S.append([(1, 2)])
-# small_S.append([(1, 2)])
-small_S.append([(1, 2), (2, 3), (1, 3)])
-# small_S.append([(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)])
-# small_S.append(
-#     [(1, 2), (2, 3), (3, 4), (4, 5), (5, 1), (1, 3), (1, 4), (3, 5), (1, 4), (1, 5)]
-# )
-# small_S.append(
-#     [(1, 6), (1, 4), (1, 2), (2, 5), (2, 3), (3, 4), (3, 6), (4, 5), (5, 6)],
-# )
-for S in small_S:
-    for m, n in [(1, 3)]:  # , (1, 3), (1, 4), (2, 2)]:
-        print(f"{S=}, {m=}, {n=}")
-        planar_game = PlanarGame(S=S, n=n, m=m)
-        # print(f"{planar_game.nonsignaling_value()=}")
-        # print(f"{planar_game.quantum_value_lower_bound()=}")
+def small_embedding_values():
+    small_S = []
+    # small_S.append([(1, 2)])
+    # small_S.append([(1, 2)])
+    small_S.append([(1, 2), (2, 3), (3, 1), (3, 4)])
+    small_S.append([(1, 2), (2, 3), (1, 3), (3, 4)])
 
-        quantum_lower_bound = planar_game.quantum_value_lower_bound()
-        print(
-            f"Quantum value lower bound: {quantum_lower_bound['quantum_lower_bound']}"
-        )
-        for s_idx, s in enumerate(S):
+    # small_S.append([(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)])
+    # small_S.append(
+    #     [(1, 2), (2, 3), (3, 4), (4, 5), (5, 1), (1, 3), (1, 4), (3, 5), (1, 4), (1, 5)]
+    # )
+    # small_S.append(
+    #     [(1, 6), (1, 4), (1, 2), (2, 5), (2, 3), (3, 4), (3, 6), (4, 5), (5, 6)],
+    # )
+    quantum = True
+    classical = True
+    ns = True
+    for S in small_S:
+        for m, n in [(1, 3)]:  # , (1, 3), (1, 4), (2, 2)]:
+            print(f"{S=}, {m=}, {n=}")
+            planar_game = PlanarGame(S=S, n=n, m=m)
+            print(f"{planar_game.nonsignaling_value()=}")
+            # print(f"{planar_game.quantum_value_lower_bound()=}")
+
+            if quantum:
+                display_quantum()
+            if classical:
+                display_classical(
+                    planar_game.classical_value(),
+                    planar_game.A,
+                    planar_game.B,
+                    planar_game.S,
+                    planar_game.T,
+                    strategy=True,
+                )
+
+
+"""
+Print the classical value of the planar game
+
+Parameters:
+* classical_value (dict) = {
+    'classical_value' : the classical value of the planar embedding game
+    'alice_strategy' : Alice's optimal classical strategy
+    'bob_strategy' : Bob's optimal classical strategy
+}
+* A, B (list) : Alice's and Bob's input sets, which are identical for the planar embedding game
+* S, T (list) : Alice's and Bob's output sets, which are identical for the planar embedding game
+* print_strategy (bool) : indicates whether to print out Alice's and Bob's classical strategies 
+"""
+
+
+def display_classical(planar_game, print_strategy=False):
+    classical_value = planar_game.classical_value()
+    print(f"Classical value: {classical_value['classical_value']}")
+    if print_strategy:
+        print("Alice's classical strategy:")
+        for idx, s in enumerate(planar_game.S):
+            print(
+                f"{s}: {np.array(planar_game.A[int(classical_value['alice_strategy'][idx])]).tolist()}"
+            )
+        print("Bob's classical strategy:")
+        for idx, s in enumerate(planar_game.T):
+            print(
+                f"{s}: {np.array(planar_game.B[int(classical_value['bob_strategy'][idx])]).tolist()}"
+            )
+
+
+"""
+Print the quantum value of the planar game
+
+Parameters:
+* planar_game (PlanarGame) : Planar game to calculate quantum value for
+* print_strategy (bool) : indicates whether to print out Alice's and Bob's quantum strategies, as POVMs 
+"""
+
+
+def display_quantum(planar_game, print_strategy=False):
+    quantum_lower_bound = planar_game.quantum_value_lower_bound()
+    print(f"Quantum value lower bound: {quantum_lower_bound['quantum_lower_bound']}")
+    if print_strategy:
+        for s_idx, s in enumerate(planar_game.S):
             print(f"{s}:")
             print("Alice's POVMs:")
             for a_idx, a in enumerate(planar_game.A):
@@ -238,20 +298,31 @@ for S in small_S:
                     f"{np.array(a).tolist()}:\n{np.array(quantum_lower_bound['alice_strategy'][s_idx, a_idx].value).round(3)}"
                 )
             print("Bob's POVMs:")
-            for a_idx, a in enumerate(planar_game.A):
+            for b_idx, b in enumerate(planar_game.B):
                 print(
-                    f"{np.array(a).tolist()}:\n{np.array(quantum_lower_bound['bob_strategy'][s_idx, a_idx].value).round(3)}"
+                    f"{np.array(b).tolist()}:\n{np.array(quantum_lower_bound['bob_strategy'][s_idx, b_idx].value).round(3)}"
                 )
 
-        classical_value = planar_game.classical_value()
-        print(f"Classical value: {classical_value['classical_value']}")
-        print("Alice's classical strategy:")
-        for idx, s in enumerate(S):
-            print(
-                f"{s}: {np.array(planar_game.A[int(classical_value['alice_strategy'][idx])]).tolist()}"
-            )
-        print("Bob's classical strategy:")
-        for idx, s in enumerate(S):
-            print(
-                f"{s}: {np.array(planar_game.B[int(classical_value['bob_strategy'][idx])]).tolist()}"
-            )
+
+def cluster():
+    parser = argparse.ArgumentParser(description="Test planar embedding game.")
+    parser.add_argument(
+        "m", help="Number of lattice points in first direction", type=int
+    )
+    parser.add_argument(
+        "n", help="Number of lattice points in second direction", type=int
+    )
+    parser.add_argument("edges", help="Description of graph in terms of edge set")
+    args = parser.parse_args()
+    planar_game = PlanarGame(S=eval(args.edges), n=args.n, m=args.m)
+    display_classical(
+        planar_game.classical_value(),
+        planar_game.A,
+        planar_game.B,
+        planar_game.S,
+        planar_game.T,
+        print_strategy=True,
+    )
+
+
+cluster()
