@@ -10,7 +10,7 @@ class PlanarGame(NonlocalGame):
     * (n, m) : The size of the lattice that the graph embeds into for the game
     """
 
-    def __init__(self, S: list, n: int, m: int):
+    def __init__(self, S: list, n: int, m: int, directed: bool = True):
         # Alice's input set
         self.S = S
         # Bob's input set
@@ -25,7 +25,10 @@ class PlanarGame(NonlocalGame):
         prob_mat = np.ones(shape=(len(self.S), len(self.T))) / (
             len(self.S) * len(self.T)
         )
-        pred_mat = self.value_matrix()
+        if directed:
+            pred_mat = self.value_matrix()
+        else:
+            pred_mat = self.value_matrix_undirected()
         super().__init__(prob_mat, pred_mat)
 
     """
@@ -208,6 +211,33 @@ class PlanarGame(NonlocalGame):
                             V_mat[a, b, s, t] = 0
         return V_mat
 
+    def value_matrix_undirected(self):
+        V_mat = np.ones(shape=(len(self.A), len(self.B), len(self.S), len(self.T)))
+        for a in range(len(self.A)):
+            for b in range(len(self.B)):
+                for s in range(len(self.S)):
+                    for t in range(len(self.T)):
+                        edge_a = self.S[s]
+                        edge_b = self.T[t]
+                        line_a = self.A[a]
+                        line_b = self.B[b]
+                        v_0 = edge_a[0]
+                        v_1 = edge_a[1]
+                        w_0 = edge_b[0]
+                        w_1 = edge_b[1]
+                        p_0 = tuple(line_a[0])
+                        p_1 = tuple(line_a[1])
+                        q_0 = tuple(line_b[0])
+                        q_1 = tuple(line_b[1])
+
+                        # Alice and Bob must return the same point exactly on the same vertices
+                        if len({v_0, v_1, w_0, w_1}) != len({p_0, p_1, q_0, q_1}):
+                            V_mat[a, b, s, t] = 0
+
+                        if PlanarGame.cross(line_a, line_b):
+                            V_mat[a, b, s, t] = 0
+        return V_mat
+
 
 """
 Print the classical value of the planar game
@@ -270,8 +300,7 @@ def small_embedding_values():
     small_S = []
     # small_S.append([(1, 2)])
     # small_S.append([(1, 2)])
-    small_S.append([(1, 2), (2, 3), (3, 1), (3, 4)])
-    small_S.append([(1, 2), (2, 3), (1, 3), (3, 4)])
+    small_S.append([(1, 2), (2, 3), (3, 1)])
 
     # small_S.append([(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)])
     # small_S.append(
@@ -286,7 +315,15 @@ def small_embedding_values():
     for S in small_S:
         for m, n in [(1, 3)]:  # , (1, 3), (1, 4), (2, 2)]:
             print(f"{S=}, {m=}, {n=}")
-            planar_game = PlanarGame(S=S, n=n, m=m)
+            planar_game = PlanarGame(S=S, n=n, m=m, directed=True)
+            if ns:
+                print(f"{planar_game.nonsignaling_value()=}")
+            if quantum:
+                display_quantum(planar_game, print_strategy=False)
+            if classical:
+                display_classical(planar_game, print_strategy=True)
+
+            planar_game = PlanarGame(S=S, n=n, m=m, directed=True)
             if ns:
                 print(f"{planar_game.nonsignaling_value()=}")
             if quantum:
