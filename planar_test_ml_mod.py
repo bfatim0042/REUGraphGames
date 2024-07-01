@@ -1,34 +1,32 @@
 import numpy as np
-import argparse
+import cvxpy
 
 
-class PlanarGame():
+class PlanarGame:
     """
     Parameters:
     * S : The edge set of the graph for the game, as tuples of vertices
     * (n, m) : The size of the lattice that the graph embeds into for the game
     """
 
-    def __init__(self, S: list, n: int, m: int, directed: bool = True):
+    def __init__(
+        self, S: list, n: int, m: int, directed: bool = True, torus: bool = False
+    ):
         # Alice's input set
         self.S = S
         # Bob's input set
         self.T = S
         self.n = n
         self.m = m
-        # Alice's output set
-        self.A = self.line_segments()
-        # Bob's output set
-        self.B = self.A
+
         # Uniform probability matrix for each input pair
         self.prob_mat = np.ones(shape=(len(self.S), len(self.T))) / (
             len(self.S) * len(self.T)
         )
-        if directed:
-            self.pred_mat = self.value_matrix()
-        else:
-            self.pred_mat = self.value_matrix_undirected()
-    
+        self.A = self.line_segments(torus=torus)
+        self.pred_mat, self.A = self.value_matrix(directed=directed, torus=torus)
+        # Bob's output set
+        self.B = self.A
 
     """
     Parameters:
@@ -39,7 +37,7 @@ class PlanarGame():
     * A list containing all line segments, as tuples of tuples of coordinates of their endpoints
     """
 
-    def line_segments(self):
+    def line_segments(self, torus=False):
         LX, LY = np.meshgrid(np.arange(self.n), np.arange(self.m))
         L = np.vstack((LX.flatten(), LY.flatten())).T
         A = []
@@ -48,7 +46,9 @@ class PlanarGame():
                 if i != j:
                     p_1 = L[i]
                     p_2 = L[j]
-                    A.append([p_1, p_2])
+                    A.append(([p_1, p_2], "interior"))
+                    if torus:
+                        A.append(([p_1, p_2], "wrap"))
         return A
 
     """
@@ -189,7 +189,7 @@ class PlanarGame():
     * The matrix V corresponding to the value function for the (G, n, m)-planarity game, where V[i, j, k, l] is 1 if (A[i], B[j]) is a winning answer to the inputs (S[k], T[l]), and 0 otherwise
     """
 
-    def value_matrix(self):
+    def value_matrix(self, directed=True, torus=False):
         V_mat = np.ones(shape=(len(self.A), len(self.B), len(self.S), len(self.T)))
         for a in range(len(self.A)):
             for b in range(len(self.B)):
@@ -200,45 +200,37 @@ class PlanarGame():
                         line_a = self.A[a]
                         line_b = self.B[b]
 
-                        # Winning condition 1
-                        # Alice and Bob must return the same point exactly on the same vertices
-                        if not PlanarGame.consistent(edge_a, edge_b, line_a, line_b):
-                            V_mat[a, b, s, t] = 0
+                        if directed and not torus:
+                            # Winning condition 1
+                            # Alice and Bob must return the same point exactly on the same vertices
+                            if not PlanarGame.consistent(
+                                edge_a, edge_b, line_a, line_b
+                            ):
+                                V_mat[a, b, s, t] = 0
 
-                        # Planarity
-                        if PlanarGame.cross(line_a, line_b):
-                            V_mat[a, b, s, t] = 0
+                            # Planarity
+                            if PlanarGame.cross(line_a, line_b):
+                                V_mat[a, b, s, t] = 0
+                        if not directed and not torus:
+                            v_0 = edge_a[0]
+                            v_1 = edge_a[1]
+                            w_0 = edge_b[0]
+                            w_1 = edge_b[1]
+                            p_0 = tuple(line_a[0])
+                            p_1 = tuple(line_a[1])
+                            q_0 = tuple(line_b[0])
+                            q_1 = tuple(line_b[1])
+
+                            # Alice and Bob must return the same point exactly on the same vertices
+                            if len({v_0, v_1, w_0, w_1}) != len({p_0, p_1, q_0, q_1}):
+                                V_mat[a, b, s, t] = 0
+
+                            if PlanarGame.cross(line_a, line_b):
+                                V_mat[a, b, s, t] = 0
         return V_mat
 
-    def value_matrix_undirected(self):
-        V_mat = np.ones(shape=(len(self.A), len(self.B), len(self.S), len(self.T)))
-        for a in range(len(self.A)):
-            for b in range(len(self.B)):
-                for s in range(len(self.S)):
-                    for t in range(len(self.T)):
-                        edge_a = self.S[s]
-                        edge_b = self.T[t]
-                        line_a = self.A[a]
-                        line_b = self.B[b]
-                        v_0 = edge_a[0]
-                        v_1 = edge_a[1]
-                        w_0 = edge_b[0]
-                        w_1 = edge_b[1]
-                        p_0 = tuple(line_a[0])
-                        p_1 = tuple(line_a[1])
-                        q_0 = tuple(line_b[0])
-                        q_1 = tuple(line_b[1])
 
-                        # Alice and Bob must return the same point exactly on the same vertices
-                        if len({v_0, v_1, w_0, w_1}) != len({p_0, p_1, q_0, q_1}):
-                            V_mat[a, b, s, t] = 0
-
-                        if PlanarGame.cross(line_a, line_b):
-                            V_mat[a, b, s, t] = 0
-        return V_mat
-            
-
-S = [(1,2), (2,3), (3,1)]
+S = [(1, 2), (2, 3), (3, 1)]
 n = 1
 m = 2
 
