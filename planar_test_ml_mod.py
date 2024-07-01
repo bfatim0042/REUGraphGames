@@ -1,5 +1,4 @@
 import numpy as np
-import cvxpy
 
 
 class PlanarGame:
@@ -24,9 +23,9 @@ class PlanarGame:
             len(self.S) * len(self.T)
         )
         self.A = self.line_segments(torus=torus)
-        self.pred_mat, self.A = self.value_matrix(directed=directed, torus=torus)
         # Bob's output set
         self.B = self.A
+        self.pred_mat = self.value_matrix(directed=directed, torus=torus)
 
     """
     Parameters:
@@ -46,8 +45,10 @@ class PlanarGame:
                 if i != j:
                     p_1 = L[i]
                     p_2 = L[j]
-                    A.append(([p_1, p_2], "interior"))
+                    if not torus:
+                        A.append([p_1, p_2])
                     if torus:
+                        A.append(([p_1, p_2], "interior"))
                         A.append(([p_1, p_2], "wrap"))
         return A
 
@@ -227,14 +228,15 @@ class PlanarGame:
 
                             if PlanarGame.cross(line_a, line_b):
                                 V_mat[a, b, s, t] = 0
+
         return V_mat
 
 
-S = [(1, 2), (2, 3), (3, 1)]
-n = 1
-m = 2
+# S = [(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)]
+# n = 1
+# m = 3
+S = 
 
-prob = PlanarGame(S=S, n=n, m=m, directed=True).prob_mat
-print(prob)
-pred = PlanarGame(S=S, n=n, m=m, directed=True).pred_mat
-print(pred)
+planar_game = PlanarGame(S=S, n=n, m=m, directed=True)
+prob = planar_game.prob_mat
+pred = planar_game.pred_mat
