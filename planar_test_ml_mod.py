@@ -1,9 +1,8 @@
 import numpy as np
-from toqito.nonlocal_games.nonlocal_game import NonlocalGame
 import argparse
 
 
-class PlanarGame(NonlocalGame):
+class PlanarGame():
     """
     Parameters:
     * S : The edge set of the graph for the game, as tuples of vertices
@@ -22,14 +21,14 @@ class PlanarGame(NonlocalGame):
         # Bob's output set
         self.B = self.A
         # Uniform probability matrix for each input pair
-        prob_mat = np.ones(shape=(len(self.S), len(self.T))) / (
+        self.prob_mat = np.ones(shape=(len(self.S), len(self.T))) / (
             len(self.S) * len(self.T)
         )
         if directed:
-            pred_mat = self.value_matrix()
+            self.pred_mat = self.value_matrix()
         else:
-            pred_mat = self.value_matrix_undirected()
-        super().__init__(prob_mat, pred_mat)
+            self.pred_mat = self.value_matrix_undirected()
+    
 
     """
     Parameters:
@@ -237,6 +236,13 @@ class PlanarGame(NonlocalGame):
                         if PlanarGame.cross(line_a, line_b):
                             V_mat[a, b, s, t] = 0
         return V_mat
-    
-    small_embedding_values()
+            
 
+S = [(1,2), (2,3), (3,1)]
+n = 1
+m = 2
+
+prob = PlanarGame(S=S, n=n, m=m, directed=True).prob_mat
+print(prob)
+pred = PlanarGame(S=S, n=n, m=m, directed=True).pred_mat
+print(pred)

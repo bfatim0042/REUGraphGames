@@ -237,6 +237,96 @@ class PlanarGame(NonlocalGame):
                         if PlanarGame.cross(line_a, line_b):
                             V_mat[a, b, s, t] = 0
         return V_mat
-    
-    small_embedding_values()
 
+
+"""
+Print the classical value of the planar game
+
+Parameters:
+* planar_game (PlanarGame) : Planar game to calculate classical value for
+* print_strategy (bool) : indicates whether to print out Alice's and Bob's classical strategies, as lists where the ith value indicates their strategy on the ith input
+"""
+
+
+def display_classical(planar_game, print_strategy=False):
+    classical_value = planar_game.classical_value()
+    print(print(f"{planar_game.classical_value()=}"))
+    print(f"Classical value: {classical_value['classical_value']}")
+
+
+"""
+Print the quantum value of the planar game
+
+Parameters:
+* planar_game (PlanarGame) : Planar game to calculate quantum value for
+* print_strategy (bool) : indicates whether to print out Alice's and Bob's quantum strategies, as POVMs 
+"""
+
+
+def display_quantum(planar_game, print_strategy=False):
+    quantum_lower_bound = planar_game.quantum_value_lower_bound()
+    print(quantum_lower_bound)
+
+"""
+Run on local computer
+"""
+
+
+def small_embedding_values():                                                                       
+    small_S = []
+    small_S.append([(1,2)])
+
+
+    quantum = True
+    classical = True
+    ns = True
+    
+    for S in small_S:
+        for m, n in [(1,2)]:  # , (1, 3), (1, 4), (2, 2)]:
+            print(f"{S=}, {m=}, {n=}")
+            planar_game = PlanarGame(S=S, n=n, m=m, directed=True)
+            if ns:
+                print(f"{planar_game.nonsignaling_value()=}")
+            if quantum:
+                display_quantum(planar_game, print_strategy=False)
+            if classical:
+                display_classical(planar_game, print_strategy=True)
+
+            planar_game = PlanarGame(S=S, n=n, m=m, directed=True)
+            if ns:
+                print(f"{planar_game.nonsignaling_value()=}")
+            if quantum:
+                display_quantum(planar_game, print_strategy=False)
+            if classical:
+                display_classical(planar_game, print_strategy=True)
+
+
+def cluster():
+    planar_game = PlanarGame(S=eval(args.edges), n=args.n, m=args.m)
+    print(f"{planar_game.S=}, {planar_game.m=}, {planar_game.n=}")
+    print(f"{planar_game.nonsignaling_value()=}")
+    display_quantum(
+        planar_game,
+        print_strategy=False,
+    )
+    display_classical(
+        planar_game,
+        print_strategy=True,
+    )
+
+
+parser = argparse.ArgumentParser(description="Test planar embedding game.")
+parser.add_argument(
+    "-m", "--m", help="Number of lattice points in first direction", type=int
+)
+parser.add_argument(
+    "-n", "--n", help="Number of lattice points in second direction", type=int
+)
+parser.add_argument("-e", "--edges", help="Description of graph in terms of edge set")
+args = parser.parse_args()
+# If optional arguments are given, run with optional arguments.
+# Otherwise run with whatever values are set in small_embedding_values.
+if args.n is not None:
+    cluster()
+else:
+    small_embedding_values()
