@@ -211,6 +211,15 @@ class PlanarGame(NonlocalGame):
                             # Planarity
                             if PlanarGame.cross(line_a, line_b):
                                 V_mat[a, b, s, t] = 0
+
+                        if directed and torus:
+                            if not PlanarGame.consistent(
+                                edge_a, edge_b, line_a, line_b
+                            ):
+                                V_mat[a, b, s, t] = 0
+                            ## TODO
+                            # need to check if line_a and line_b cross on the torus
+
                         if not directed and not torus:
                             v_0 = edge_a[0]
                             v_1 = edge_a[1]

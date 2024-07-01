@@ -235,7 +235,7 @@ class PlanarGame:
 # S = [(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)]
 # n = 1
 # m = 3
-S = 
+S = eval(S)
 
 planar_game = PlanarGame(S=S, n=n, m=m, directed=True)
 prob = planar_game.prob_mat
