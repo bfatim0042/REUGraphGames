@@ -218,7 +218,7 @@ class PlanarGame(NonlocalGame):
                             ):
                                 V_mat[a, b, s, t] = 0
                             ## TODO
-                            # need to check if line_a and line_b cross on the torus
+                            # need to check if line_a and line_b cross for a 1xn torus
 
                         if not directed and not torus:
                             v_0 = edge_a[0]
@@ -263,49 +263,62 @@ Parameters:
 """
 
 
-def display_quantum(planar_game, print_strategy=False):
-    quantum_lower_bound = planar_game.quantum_value_lower_bound()
+def display_quantum(planar_game, print_strategy=False, dim=2, iters=5):
+    quantum_lower_bound = planar_game.quantum_value_lower_bound(dim=dim, iters=iters)
     print(f"Quantum value lower bound: {quantum_lower_bound['quantum_lower_bound']}")
+    complex_formatter = {
+            "complexfloat": lambda x: (
+                f"{x.real} + {x.imag}j" if x.imag != 0 else f"{x.real}"
+            )
+        }
+
     if print_strategy:
         for s_idx, s in enumerate(planar_game.S):
             print(f"{s}:")
             print("Alice's POVMs:")
+            a_povm_sum = 0
             for a_idx, a in enumerate(planar_game.A):
-                print(
-                    f"{np.array(a).tolist()}:\n{np.array(quantum_lower_bound['alice_strategy'][s_idx, a_idx].value).round(3)}"
-                )
+                a_povm = np.array(
+                    quantum_lower_bound["alice_strategy"][s_idx, a_idx].value
+                ).round(3)
+                a_povm_sum += a_povm
+                if np.any(a_povm):
+                    print(f"{np.array(a).tolist()}:\n{np.array2string(
+                        a_povm,
+                        formatter=complex_formatter,
+                    )}")
+            print(f"Sum of Alice's POVMs: {np.array2string(a_povm_sum, formatter=complex_formatter)}")
+            b_povm_sum = 0
             print("Bob's POVMs:")
             for b_idx, b in enumerate(planar_game.B):
-                print(
-                    f"{np.array(b).tolist()}:\n{np.array(quantum_lower_bound['bob_strategy'][s_idx, b_idx].value).round(3)}"
-                )
+                b_povm = np.array(
+                    quantum_lower_bound["bob_strategy"][s_idx, b_idx].value
+                ).round(3)
+                b_povm_sum += b_povm
+                if np.any(b_povm):
+                    print(f"{np.array(b).tolist()}:\n{np.array2string(
+                        b_povm,
+                        formatter=complex_formatter,
+                    )}")
+            print(f"Sum of Bob's POVMs: {np.array2string(b_povm_sum, formatter=complex_formatter)}")
 
 
 def small_embedding_values():
     small_S = []
-    # small_S.append([(1, 2)])
-    # small_S.append([(1, 2)])
-    small_S.append([(1, 2), (2, 3)])  # , (3, 1), (3, 4)])
-    # small_S.append([(1, 2), (2, 3), (1, 3), (3, 4)])
-
-    # small_S.append([(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)])
-    # small_S.append(
-    #     [(1, 2), (2, 3), (3, 4), (4, 5), (5, 1), (1, 3), (1, 4), (3, 5), (1, 4), (1, 5)]
-    # )
-    # small_S.append(
-    #     [(1, 6), (1, 4), (1, 2), (2, 5), (2, 3), (3, 4), (3, 6), (4, 5), (5, 6)],
-    # )
+    small_S.append([(1,2), (2,3), (2,4)])  # , (3, 1), (3, 4)])
     quantum = True
-    classical = True
-    ns = True
+    classical = False
+    ns = False
     for S in small_S:
-        for m, n in [(1, 3)]:  # , (1, 3), (1, 4), (2, 2)]:
+        for m, n in [(1,3)]:  # , (1, 3), (1, 4), (2, 2)]:
             print(f"{S=}, {m=}, {n=}")
             planar_game = PlanarGame(S=S, n=n, m=m)
             if ns:
                 print(f"{planar_game.nonsignaling_value()=}")
             if quantum:
-                display_quantum(planar_game, print_strategy=False)
+                dim = 2
+                iters = 5
+                display_quantum(planar_game, print_strategy=True, dim=dim, iters=iters)
             if classical:
                 display_classical(planar_game, print_strategy=True)
 
