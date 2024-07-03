@@ -71,14 +71,16 @@ class PlanarGame(NonlocalGame):
     """
 
     @staticmethod
-    def consistent(edge_a: tuple, edge_b: tuple, line_a: tuple, line_b: tuple):
+    def consistent(edge_a: tuple, edge_b: tuple, line_a: tuple, line_b: tuple, torus=False):
         for i in range(2):
             for j in range(2):
                 # Alice and Bob must map the same vertices to the same point
                 if edge_a[i] == edge_b[j] and np.any(line_a[i] != line_b[j]):
                     return False
                 # Alice and Bob must map different vertices to different points
-                elif edge_a[i] != edge_b[j] and np.all(line_a[i] == line_b[j]):
+                if edge_a[i] != edge_b[j] and np.all(line_a[i] == line_b[j]) and not torus:
+                    return False
+                if edge_a[i] == edge_b[j] and np.any(line_a[i] != line_b[j]) and torus:
                     return False
         return True
 
@@ -96,7 +98,7 @@ class PlanarGame(NonlocalGame):
     """
 
     @staticmethod
-    def cross(line_a: tuple, line_b: tuple):
+    def cross(line_a: tuple, line_b: tuple, torus=False):
         """
         Helper function checking whether p_2 lies on the line segment from p_1 to p_3
 
@@ -113,7 +115,7 @@ class PlanarGame(NonlocalGame):
                 and p_2[0] >= min(p_1[0], p_3[0])
                 and p_2[1] <= max(p_1[1], p_3[1])
                 and p_2[1] >= min(p_1[1], p_3[1])
-            ):
+            ) :
                 return True
 
         """
@@ -218,7 +220,10 @@ class PlanarGame(NonlocalGame):
                             ):
                                 V_mat[a, b, s, t] = 0
                             ## TODO
-                            # need to check if line_a and line_b cross for a 1xn torus
+                            # need to check if line_a and line_b cross on the torus
+                            if PlanarGame.cross(line_a, line_b):
+                                V_mat[a, b, s, t] = 0
+                             
 
                         if not directed and not torus:
                             v_0 = edge_a[0]
@@ -263,62 +268,49 @@ Parameters:
 """
 
 
-def display_quantum(planar_game, print_strategy=False, dim=2, iters=5):
-    quantum_lower_bound = planar_game.quantum_value_lower_bound(dim=dim, iters=iters)
+def display_quantum(planar_game, print_strategy=False):
+    quantum_lower_bound = planar_game.quantum_value_lower_bound(dim=3, iters=3)
     print(f"Quantum value lower bound: {quantum_lower_bound['quantum_lower_bound']}")
-    complex_formatter = {
-            "complexfloat": lambda x: (
-                f"{x.real} + {x.imag}j" if x.imag != 0 else f"{x.real}"
-            )
-        }
-
     if print_strategy:
         for s_idx, s in enumerate(planar_game.S):
             print(f"{s}:")
             print("Alice's POVMs:")
-            a_povm_sum = 0
             for a_idx, a in enumerate(planar_game.A):
-                a_povm = np.array(
-                    quantum_lower_bound["alice_strategy"][s_idx, a_idx].value
-                ).round(3)
-                a_povm_sum += a_povm
-                if np.any(a_povm):
-                    print(f"{np.array(a).tolist()}:\n{np.array2string(
-                        a_povm,
-                        formatter=complex_formatter,
-                    )}")
-            print(f"Sum of Alice's POVMs: {np.array2string(a_povm_sum, formatter=complex_formatter)}")
-            b_povm_sum = 0
+                print(
+                    f"{np.array(a).tolist()}:\n{np.array(quantum_lower_bound['alice_strategy'][s_idx, a_idx].value).round(3)}"
+                )
             print("Bob's POVMs:")
             for b_idx, b in enumerate(planar_game.B):
-                b_povm = np.array(
-                    quantum_lower_bound["bob_strategy"][s_idx, b_idx].value
-                ).round(3)
-                b_povm_sum += b_povm
-                if np.any(b_povm):
-                    print(f"{np.array(b).tolist()}:\n{np.array2string(
-                        b_povm,
-                        formatter=complex_formatter,
-                    )}")
-            print(f"Sum of Bob's POVMs: {np.array2string(b_povm_sum, formatter=complex_formatter)}")
+                print(
+                    f"{np.array(b).tolist()}:\n{np.array(quantum_lower_bound['bob_strategy'][s_idx, b_idx].value).round(3)}"
+                )
 
 
 def small_embedding_values():
     small_S = []
-    small_S.append([(1,2), (2,3), (2,4)])  # , (3, 1), (3, 4)])
+    # small_S.append([(1, 2)])
+    # small_S.append([(1, 2)])
+    small_S.append([(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)])  # , (3, 1), (3, 4)])
+    # small_S.append([(1, 2), (2, 3), (1, 3), (3, 4)])
+
+    # small_S.append([(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)])
+    # small_S.append(
+    #     [(1, 2), (2, 3), (3, 4), (4, 5), (5, 1), (1, 3), (1, 4), (3, 5), (1, 4), (1, 5)]
+    # )
+    # small_S.append(
+    #     [(1, 6), (1, 4), (1, 2), (2, 5), (2, 3), (3, 4), (3, 6), (4, 5), (5, 6)],
+    # )
     quantum = True
-    classical = False
-    ns = False
+    classical = True
+    ns = True
     for S in small_S:
-        for m, n in [(1,3)]:  # , (1, 3), (1, 4), (2, 2)]:
+        for m, n in [(1, 3)]:  # , (1, 3), (1, 4), (2, 2)]:
             print(f"{S=}, {m=}, {n=}")
             planar_game = PlanarGame(S=S, n=n, m=m)
             if ns:
                 print(f"{planar_game.nonsignaling_value()=}")
             if quantum:
-                dim = 2
-                iters = 5
-                display_quantum(planar_game, print_strategy=True, dim=dim, iters=iters)
+                display_quantum(planar_game, print_strategy=True)
             if classical:
                 display_classical(planar_game, print_strategy=True)
 
