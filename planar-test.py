@@ -268,7 +268,7 @@ def display_quantum(planar_game, print_strategy=False, dim=2, iters=5):
     print(f"Quantum value lower bound: {quantum_lower_bound['quantum_lower_bound']}")
     complex_formatter = {
             "complexfloat": lambda x: (
-                f"{x.real} + {x.imag}j" if x.imag != 0 else f"{x.real}"
+                f"{x.real} + {x.imag}j" if (x.imag - 0) < 10 ** (-6) else f"{x.real}"
             )
         }
 
@@ -305,19 +305,19 @@ def display_quantum(planar_game, print_strategy=False, dim=2, iters=5):
 
 def small_embedding_values():
     small_S = []
-    small_S.append([(1,2), (2,3), (2,4)])  # , (3, 1), (3, 4)])
+    small_S.append([(1,3), (2,3), (3,4), (3,5)])  # , (3, 1), (3, 4)])
     quantum = True
     classical = False
     ns = False
     for S in small_S:
-        for m, n in [(1,3)]:  # , (1, 3), (1, 4), (2, 2)]:
+        for m, n in [(2, 2)]:  # , (1, 3), (1, 4), (2, 2)]:
             print(f"{S=}, {m=}, {n=}")
             planar_game = PlanarGame(S=S, n=n, m=m)
             if ns:
                 print(f"{planar_game.nonsignaling_value()=}")
             if quantum:
-                dim = 2
-                iters = 5
+                dim = 3
+                iters = 30
                 display_quantum(planar_game, print_strategy=True, dim=dim, iters=iters)
             if classical:
                 display_classical(planar_game, print_strategy=True)
