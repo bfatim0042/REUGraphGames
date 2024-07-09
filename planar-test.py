@@ -2,23 +2,27 @@ import numpy as np
 from toqito.nonlocal_games.nonlocal_game import NonlocalGame
 import argparse
 
-
 class PlanarGame(NonlocalGame):
     """
     Parameters:
     * S : The edge set of the graph for the game, as tuples of vertices
-    * (n, m) : The size of the lattice that the graph embeds into for the game
+    * (m, n) : The size of the lattice that the graph embeds into for the game
     """
 
     def __init__(
-        self, S: list, n: int, m: int, directed: bool = True, torus: bool = False
+        self, S: list, m: int, n: int, directed: bool = True, torus: bool = False
     ):
         # Alice's input set
         self.S = S
         # Bob's input set
         self.T = S
-        self.n = n
         self.m = m
+        self.n = n
+
+        self.torus = torus
+        if self.torus:
+            if m != 1:
+                raise Exception("The game has not been implemented for torus boundary conditions not on a 1 x n grid.")
 
         # Uniform probability matrix for each input pair
         self.prob_mat = np.ones(shape=(len(self.S), len(self.T))) / (
@@ -40,7 +44,7 @@ class PlanarGame(NonlocalGame):
     * A list containing all line segments, as tuples of tuples of coordinates of their endpoints
     """
 
-    def line_segments(self, torus=False):
+    def line_segments(self, torus: bool = False):
         LX, LY = np.meshgrid(np.arange(self.n), np.arange(self.m))
         L = np.vstack((LX.flatten(), LY.flatten())).T
         A = []
@@ -50,10 +54,10 @@ class PlanarGame(NonlocalGame):
                     p_1 = L[i]
                     p_2 = L[j]
                     if not torus:
-                        A.append([p_1, p_2])
+                        A.append({'endpoints': [p_1, p_2], 'boundary_conditions': ""})
                     if torus:
-                        A.append(([p_1, p_2], "interior"))
-                        A.append(([p_1, p_2], "wrap"))
+                        A.append({'endpoints': [p_1, p_2], 'boundary_conditions': "interior"})
+                        A.append({'endpoints': [p_1, p_2], 'boundary_conditions': "wrap"})
         return A
 
     """
@@ -71,15 +75,25 @@ class PlanarGame(NonlocalGame):
     """
 
     @staticmethod
-    def consistent(edge_a: tuple, edge_b: tuple, line_a: tuple, line_b: tuple):
+    def consistent(edge_a: tuple, edge_b: tuple, line_a: dict, line_b: dict):
+        # Alice and Bob must map the exact same edge to the exact same line segments 
+        if edge_a == edge_b: 
+            if line_a['boundary_conditions'] != line_b['boundary_conditions']:
+                return False
+
+
+        # Alice and Bob must map the same vertices to the same points
         for i in range(2):
             for j in range(2):
                 # Alice and Bob must map the same vertices to the same point
-                if edge_a[i] == edge_b[j] and np.any(line_a[i] != line_b[j]):
-                    return False
+                if edge_a[i] == edge_b[j]:
+                    if np.any(line_a['endpoints'][i] != line_b['endpoints'][j]):
+                        return False
+                
                 # Alice and Bob must map different vertices to different points
-                elif edge_a[i] != edge_b[j] and np.all(line_a[i] == line_b[j]):
-                    return False
+                elif edge_a[i] != edge_b[j]:
+                    if np.all(line_a['endpoints'][i] == line_b['endpoints'][j]):
+                        return False
         return True
 
     """
@@ -96,7 +110,7 @@ class PlanarGame(NonlocalGame):
     """
 
     @staticmethod
-    def cross(line_a: tuple, line_b: tuple):
+    def cross(line_a: tuple, line_b: tuple, torus: bool = False):
         """
         Helper function checking whether p_2 lies on the line segment from p_1 to p_3
 
@@ -106,7 +120,6 @@ class PlanarGame(NonlocalGame):
         Returns:
         * True if p_2 lies on line segment from p_1 to p_3
         """
-
         def on_segment(p_1, p_2, p_3):
             if (
                 p_2[0] <= max(p_1[0], p_3[0])
@@ -136,10 +149,12 @@ class PlanarGame(NonlocalGame):
             if o < 0:
                 return 2
 
-        p_0 = tuple(line_a[0])
-        p_1 = tuple(line_a[1])
-        q_0 = tuple(line_b[0])
-        q_1 = tuple(line_b[1])
+        p_0 = tuple(line_a['endpoints'][0])
+        p_1 = tuple(line_a['endpoints'][1])
+        q_0 = tuple(line_b['endpoints'][0])
+        q_1 = tuple(line_b['endpoints'][1])
+        bc_0 = line_a['boundary_conditions']
+        bc_1 = line_a['boundary_conditions']
 
         o_1 = orientation(p_0, p_1, q_0)
         o_2 = orientation(p_0, p_1, q_1)
@@ -148,23 +163,40 @@ class PlanarGame(NonlocalGame):
 
         # If all four vertices are distinct, check if they cross anywhere
         if len({p_0, p_1, q_0, q_1}) == 4:
-            # General case
-            if o_1 != o_2 and o_3 != o_4:
-                return True
+            if not torus:
+                # General case
+                if o_1 != o_2 and o_3 != o_4:
+                    return True
 
-            # Collinear cases
-            if o_1 == 0 and on_segment(p_0, q_0, p_1):
+                # Collinear cases
+                if o_1 == 0 and on_segment(p_0, q_0, p_1):
+                    return True
+                if o_2 == 0 and on_segment(p_0, q_1, p_1):
+                    return True
+                if o_3 == 0 and on_segment(q_0, p_0, q_1):
+                    return True
+                if o_4 == 0 and on_segment(q_0, p_1, q_1):
+                    return True
+                return False
+            elif torus:
+                # assume 1 x n for torus boundary conditions
+                # considering two lines that do not cross (on the circle), there are four possibilities of where the boundaries occur
+                if bc_0 == "wrap":
+                    if bc_1 == "interior" and (min(p_0[0], p_1[0]) < min(q_0[0], q_1[0]) and max(p_0[0], p_1[0]) > max(q_0[0], q_1[0])):
+                        return False
+                if bc_1 == "wrap":
+                    if bc_0 == "interior" and (min(q_0[0], q_1[0]) < min(p_0[0], p_1[0]) and max(q_0[0], q_1[0]) > max(p_0[0], p_1[0])):
+                        return False 
+                if bc_0 == "interior" and bc_1 == "interior":
+                    if max(p_0[0], p_1[0]) < min(q_0[0], q_1[0]): 
+                        return False 
+                    if max(q_0[0], q_1[0]) < min(p_0[0], p_1[0]):
+                        return False
                 return True
-            if o_2 == 0 and on_segment(p_0, q_1, p_1):
-                return True
-            if o_3 == 0 and on_segment(q_0, p_0, q_1):
-                return True
-            if o_4 == 0 and on_segment(q_0, p_1, q_1):
-                return True
-            return False
 
         # If the two edges share exactly one vertex, check if they cross away from the shared vertex
         if len({p_0, p_1, q_0, q_1}) == 3:
+            print(f"{line_a=}, {line_b=}")
             # find the shared vertex
             line_a_set = {p_0, p_1}
             line_b_set = {q_0, q_1}
@@ -176,19 +208,88 @@ class PlanarGame(NonlocalGame):
             (p_0,) = line_a_set
             (p_1,) = line_b_set
 
+            
             o = orientation(p_0, p_shared, p_1)
-            if o == 0:  # if collinear, check if p_shared lies between p_0 and p_1
+            if o == 0:  
+                print(f"{p_shared=}, {p_0=}, {p_1=}")
+                # if collinear, check if p_shared lies between p_0 and p_1
                 if on_segment(p_0, p_shared, p_1):
-                    return False
+                    if not torus:
+                        return False
+                    # the line segments intersect if either of their boundary conditions is "wrap"
+                    elif torus:
+                        return "wrap" in [bc_0, bc_1] 
                 else:
-                    return True
+                    if not torus:
+                        return True
+                    elif torus: 
+                        # Assume n x 1 grid
+                        # if p_shared is not between p_0 and p_1, the further point needs to be "wrap" and the closer point needs to be "interior" to not intersect
+                        if np.abs(p_0[0] - p_shared[0]) < np.abs(p_1[0] - p_shared[0]):
+                            p_close = p_0
+                            bc_close = bc_0 
+                            bc_far = bc_1
+                        else:
+                            p_close = p_1 
+                            bc_close = bc_1 
+                            bc_far = bc_0
+                        return not ((bc_close == "interior") and (bc_far == "wrap"))
             else:
+                # Does not account for torus if not 1xn 
                 return False
 
         # If the two edges are the same edge, do not consider them to cross
-        else:
+        elif len({p_0, p_1, q_0, q_1}) <= 2:
             return False
+        
+        # Assume 1xn grid
+        elif torus:
+            p_0 = tuple(line_a[0][0])
+            p_1 = tuple(line_a[0][1])
+            q_0 = tuple(line_b[0][0])
+            q_1 = tuple(line_b[0][1])
+            bc_0 = line_a[1]
+            bc_1 = line_a[1]
+        
+            # if all four points are different (by assumption, it's 1xn, so all points are of the form [k, 0])
+            if len({p_0, p_1, q_0, q_1}) == 4:
+                return True
 
+            # if they share exactly one point
+            elif len({p_0, p_1, q_0, q_1}) == 3:
+                # find the shared vertex
+                line_a_set = {p_0, p_1}
+                line_b_set = {q_0, q_1}
+                (p_shared,) = line_a_set & line_b_set
+
+                # find the two distinct vertices
+                line_a_set.remove(p_shared)
+                line_b_set.remove(p_shared)
+                (p_0,) = line_a_set
+                (p_1,) = line_b_set 
+
+                o = orientation(p_0, p_shared, p_1)
+                if o == 0:  
+                    # if collinear, check if p_shared lies between p_0 and p_1
+                    if on_segment(p_0, p_shared, p_1):
+                        # they intersect if either of the boundary conditions is "wrap"
+                        return "wrap" in [bc_0, bc_1] 
+                    # if p_shared is not between p_0 and p_1, the further point needs to be "wrap" and the closer point needs to be "interior"
+                    else:
+                        if np.abs(p_0[0] - p_shared[0]) < np.abs(p_1[0] - p_shared[0]):
+                            p_close = p_0
+                            bc_close = bc_0 
+                            bc_far = bc_1
+                        else:
+                            p_close = p_1 
+                            bc_close = bc_1 
+                            bc_far = bc_0
+                        return (bc_close == "interior") and (bc_far == "wrap")
+                else:
+                    return False
+            else:
+                return False
+            
     def value_matrix(self, directed=True, torus=False):
         V_mat = np.ones(shape=(len(self.A), len(self.B), len(self.S), len(self.T)))
         for a in range(len(self.A)):
@@ -200,25 +301,19 @@ class PlanarGame(NonlocalGame):
                         line_a = self.A[a]
                         line_b = self.B[b]
 
-                        if directed and not torus:
+                        if directed:
                             # Winning condition 1
                             # Alice and Bob must return the same point exactly on the same vertices
                             if not PlanarGame.consistent(
                                 edge_a, edge_b, line_a, line_b
                             ):
                                 V_mat[a, b, s, t] = 0
-
-                            # Planarity
-                            if PlanarGame.cross(line_a, line_b):
-                                V_mat[a, b, s, t] = 0
-
-                        if directed and torus:
-                            if not PlanarGame.consistent(
-                                edge_a, edge_b, line_a, line_b
-                            ):
-                                V_mat[a, b, s, t] = 0
-                            ## TODO
-                            # need to check if line_a and line_b cross for a 1xn torus
+                                
+                            else:
+                                # Planarity
+                                if PlanarGame.cross(line_a, line_b, torus):
+                                    print(f"{line_a=}, {line_b=}: CROSS")
+                                    V_mat[a, b, s, t] = 0
 
                         if not directed and not torus:
                             v_0 = edge_a[0]
@@ -234,25 +329,24 @@ class PlanarGame(NonlocalGame):
                             if len({v_0, v_1, w_0, w_1}) != len({p_0, p_1, q_0, q_1}):
                                 V_mat[a, b, s, t] = 0
 
-                            if PlanarGame.cross(line_a, line_b):
+                            if PlanarGame.cross(line_a, line_b, torus = False):
                                 V_mat[a, b, s, t] = 0
         return V_mat
 
 
-def display_classical(planar_game, print_strategy=False):
+def display_classical(planar_game, print_strategy=False, torus = False):
     classical_value = planar_game.classical_value()
+    print(f"classical value stuff: {classical_value}")
     print(f"Classical value: {classical_value['classical_value']}")
     if print_strategy:
         print("Alice's classical strategy:")
         for idx, s in enumerate(planar_game.S):
             print(
-                f"{s}: {np.array(planar_game.A[int(classical_value['alice_strategy'][idx])]).tolist()}"
+                f"{s}: {np.array(planar_game.A[int(classical_value['alice_strategy'][idx])]['endpoints']).tolist()}, {planar_game.A[int(classical_value['alice_strategy'][idx])]['boundary_conditions']}"
             )
         print("Bob's classical strategy:")
         for idx, s in enumerate(planar_game.T):
-            print(
-                f"{s}: {np.array(planar_game.B[int(classical_value['bob_strategy'][idx])]).tolist()}"
-            )
+            print(f"{s}: {np.array(planar_game.B[int(classical_value['bob_strategy'][idx])]['endpoints']).tolist()}, {planar_game.B[int(classical_value['bob_strategy'][idx])]['boundary_conditions']}")
 
 
 """
@@ -283,11 +377,11 @@ def display_quantum(planar_game, print_strategy=False, dim=2, iters=5):
                 ).round(3)
                 a_povm_sum += a_povm
                 if np.any(a_povm):
-                    print(f"{np.array(a).tolist()}:\n{np.array2string(
+                    print(f"{np.array(a['endpoints']).tolist()}, {a['boundary_conditions']}:\n{np.array2string(
                         a_povm,
                         formatter=complex_formatter,
                     )}")
-            print(f"Sum of Alice's POVMs: {np.array2string(a_povm_sum, formatter=complex_formatter)}")
+            print(f"Sum of Alice's POVMs: {np.array2string(a_povm_sum.round(3), formatter=complex_formatter)}")
             b_povm_sum = 0
             print("Bob's POVMs:")
             for b_idx, b in enumerate(planar_game.B):
@@ -296,32 +390,32 @@ def display_quantum(planar_game, print_strategy=False, dim=2, iters=5):
                 ).round(3)
                 b_povm_sum += b_povm
                 if np.any(b_povm):
-                    print(f"{np.array(b).tolist()}:\n{np.array2string(
+                    print(f"{np.array(b['endpoints']).tolist()}, {b['boundary_conditions']}:\n{np.array2string(
                         b_povm,
                         formatter=complex_formatter,
                     )}")
-            print(f"Sum of Bob's POVMs: {np.array2string(b_povm_sum, formatter=complex_formatter)}")
+            print(f"Sum of Bob's POVMs: {np.array2string(b_povm_sum.round(3), formatter=complex_formatter)}")
 
 
 def small_embedding_values():
     small_S = []
-    small_S.append([(1, 2), (1, 3)])  # , (3, 1), (3, 4)])
-    quantum = True
-    classical = False
+    small_S.append([(1,4), (1, 2)])#, (2,4), (3,4), (5,4), (6,4)])  # , (3, 1), (3, 4)])
+    quantum = False
+    classical = True
     ns = False
+    torus = True
     for S in small_S:
-        for m, n in [(1, 2)]:  # , (1, 3), (1, 4), (2, 2)]:
+        for m, n in [(1, 3)]:  # , (1, 3), (1, 4), (2, 2)]:
             print(f"{S=}, {m=}, {n=}")
-            planar_game = PlanarGame(S=S, n=n, m=m)
+            planar_game = PlanarGame(S=S, n=n, m=m, torus = torus)
             if ns:
                 print(f"{planar_game.nonsignaling_value()=}")
             if quantum:
                 dim = 2
-                iters = 1
+                iters = 3
                 display_quantum(planar_game, print_strategy=True, dim=dim, iters=iters)
             if classical:
-                display_classical(planar_game, print_strategy=True)
-
+                display_classical(planar_game, print_strategy=True, torus = torus)
 
 def cluster():
     planar_game = PlanarGame(S=eval(args.edges), n=args.n, m=args.m)

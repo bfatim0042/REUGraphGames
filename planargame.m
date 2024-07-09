@@ -1,9 +1,9 @@
 tic
 cvx_clear
 py.importlib.import_module('numpy');
-n = 2
-m = 2
-S = "[(1, 5), (2, 5), (3, 5), (4, 5), (6, 5), (7, 5)]"
+n = 1
+m = 5
+S = "[(1,2), (2,3), (1,4), (1,5)]"
 pred = pyrunfile("~/Documents/GitHub/REUGraphGames/planar_test_ml_mod.py", "pred",n = n, m = m, S = S);
 prob = pyrunfile("~/Documents/GitHub/REUGraphGames/planar_test_ml_mod.py", "prob",n = n, m = m, S = S);
 prob = double(prob);
