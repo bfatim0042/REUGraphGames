@@ -154,7 +154,7 @@ class PlanarGame(NonlocalGame):
         q_0 = tuple(line_b['endpoints'][0])
         q_1 = tuple(line_b['endpoints'][1])
         bc_0 = line_a['boundary_conditions']
-        bc_1 = line_a['boundary_conditions']
+        bc_1 = line_b['boundary_conditions']
 
         o_1 = orientation(p_0, p_1, q_0)
         o_2 = orientation(p_0, p_1, q_1)
@@ -196,7 +196,6 @@ class PlanarGame(NonlocalGame):
 
         # If the two edges share exactly one vertex, check if they cross away from the shared vertex
         if len({p_0, p_1, q_0, q_1}) == 3:
-            print(f"{line_a=}, {line_b=}")
             # find the shared vertex
             line_a_set = {p_0, p_1}
             line_b_set = {q_0, q_1}
@@ -211,7 +210,6 @@ class PlanarGame(NonlocalGame):
             
             o = orientation(p_0, p_shared, p_1)
             if o == 0:  
-                print(f"{p_shared=}, {p_0=}, {p_1=}")
                 # if collinear, check if p_shared lies between p_0 and p_1
                 if on_segment(p_0, p_shared, p_1):
                     if not torus:
@@ -241,54 +239,6 @@ class PlanarGame(NonlocalGame):
         # If the two edges are the same edge, do not consider them to cross
         elif len({p_0, p_1, q_0, q_1}) <= 2:
             return False
-        
-        # Assume 1xn grid
-        elif torus:
-            p_0 = tuple(line_a[0][0])
-            p_1 = tuple(line_a[0][1])
-            q_0 = tuple(line_b[0][0])
-            q_1 = tuple(line_b[0][1])
-            bc_0 = line_a[1]
-            bc_1 = line_a[1]
-        
-            # if all four points are different (by assumption, it's 1xn, so all points are of the form [k, 0])
-            if len({p_0, p_1, q_0, q_1}) == 4:
-                return True
-
-            # if they share exactly one point
-            elif len({p_0, p_1, q_0, q_1}) == 3:
-                # find the shared vertex
-                line_a_set = {p_0, p_1}
-                line_b_set = {q_0, q_1}
-                (p_shared,) = line_a_set & line_b_set
-
-                # find the two distinct vertices
-                line_a_set.remove(p_shared)
-                line_b_set.remove(p_shared)
-                (p_0,) = line_a_set
-                (p_1,) = line_b_set 
-
-                o = orientation(p_0, p_shared, p_1)
-                if o == 0:  
-                    # if collinear, check if p_shared lies between p_0 and p_1
-                    if on_segment(p_0, p_shared, p_1):
-                        # they intersect if either of the boundary conditions is "wrap"
-                        return "wrap" in [bc_0, bc_1] 
-                    # if p_shared is not between p_0 and p_1, the further point needs to be "wrap" and the closer point needs to be "interior"
-                    else:
-                        if np.abs(p_0[0] - p_shared[0]) < np.abs(p_1[0] - p_shared[0]):
-                            p_close = p_0
-                            bc_close = bc_0 
-                            bc_far = bc_1
-                        else:
-                            p_close = p_1 
-                            bc_close = bc_1 
-                            bc_far = bc_0
-                        return (bc_close == "interior") and (bc_far == "wrap")
-                else:
-                    return False
-            else:
-                return False
             
     def value_matrix(self, directed=True, torus=False):
         V_mat = np.ones(shape=(len(self.A), len(self.B), len(self.S), len(self.T)))
@@ -312,10 +262,9 @@ class PlanarGame(NonlocalGame):
                             else:
                                 # Planarity
                                 if PlanarGame.cross(line_a, line_b, torus):
-                                    print(f"{line_a=}, {line_b=}: CROSS")
                                     V_mat[a, b, s, t] = 0
 
-                        if not directed and not torus:
+                        elif not directed and not torus:
                             v_0 = edge_a[0]
                             v_1 = edge_a[1]
                             w_0 = edge_b[0]
@@ -331,12 +280,15 @@ class PlanarGame(NonlocalGame):
 
                             if PlanarGame.cross(line_a, line_b, torus = False):
                                 V_mat[a, b, s, t] = 0
+                        else:
+                            raise Exception("The undirected, torus case has not been implemented.")
         return V_mat
 
 
 def display_classical(planar_game, print_strategy=False, torus = False):
     classical_value = planar_game.classical_value()
-    print(f"classical value stuff: {classical_value}")
+    planar_game.pred_mat = planar_game.value_matrix(directed=True, torus=torus)
+
     print(f"Classical value: {classical_value['classical_value']}")
     if print_strategy:
         print("Alice's classical strategy:")
@@ -344,10 +296,15 @@ def display_classical(planar_game, print_strategy=False, torus = False):
             print(
                 f"{s}: {np.array(planar_game.A[int(classical_value['alice_strategy'][idx])]['endpoints']).tolist()}, {planar_game.A[int(classical_value['alice_strategy'][idx])]['boundary_conditions']}"
             )
+            # print("Bob's classical strategy:")
+            # for idx_b, t in enumerate(planar_game.T):
+            #     print(f"{t}: {np.array(planar_game.B[int(classical_value['bob_strategy'][idx_b])]['endpoints']).tolist()}, {planar_game.B[int(classical_value['bob_strategy'][idx_b])]['boundary_conditions']}")
+            #     print(f"{planar_game.pred_mat[int(classical_value['alice_strategy'][idx]), int(classical_value['bob_strategy'][idx_b]), idx, idx_b]=}")
         print("Bob's classical strategy:")
         for idx, s in enumerate(planar_game.T):
             print(f"{s}: {np.array(planar_game.B[int(classical_value['bob_strategy'][idx])]['endpoints']).tolist()}, {planar_game.B[int(classical_value['bob_strategy'][idx])]['boundary_conditions']}")
 
+        
 
 """
 Print the quantum value of the planar game
@@ -399,11 +356,11 @@ def display_quantum(planar_game, print_strategy=False, dim=2, iters=5):
 
 def small_embedding_values():
     small_S = []
-    small_S.append([(1,4), (1, 2)])#, (2,4), (3,4), (5,4), (6,4)])  # , (3, 1), (3, 4)])
+    small_S.append([(1,2), (2,3), (1,4), (1,5)])#, (2,4), (3,4), (5,4), (6,4)])  # , (3, 1), (3, 4)])
     quantum = False
     classical = True
     ns = False
-    torus = True
+    torus = False
     for S in small_S:
         for m, n in [(1, 3)]:  # , (1, 3), (1, 4), (2, 2)]:
             print(f"{S=}, {m=}, {n=}")
